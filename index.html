@@ -153,6 +153,17 @@
   .params-box{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:16px;}
   .params-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--deep);margin-bottom:16px;}
 
+  /* ── BUDGET QUICK EDIT dans hero ── */
+  .budget-quick-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .budget-quick-label{font-size:12px;opacity:.75;white-space:nowrap;}
+  .budget-inline-input{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);border-radius:10px;color:white;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;width:120px;padding:5px 10px;outline:none;text-align:center;-moz-appearance:textfield;}
+  .budget-inline-input::-webkit-outer-spin-button,.budget-inline-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .budget-inline-input:focus{background:rgba(255,255,255,.25);border-color:var(--sun);}
+  .budget-inline-input::placeholder{color:rgba(255,255,255,.4);}
+  .budget-save-btn{background:var(--sun);color:var(--deep);border:none;border-radius:8px;padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:transform .1s,box-shadow .1s;white-space:nowrap;}
+  .budget-save-btn:hover{transform:scale(1.04);box-shadow:0 3px 10px rgba(0,0,0,.2);}
+  .budget-hint{font-size:11px;opacity:.55;margin-top:3px;}
+
   @media(max-width:480px){
     .budget-card-value{font-size:16px;}
     .trip-hero{padding:18px 16px;}
@@ -196,8 +207,20 @@
     <div class="trip-hero" id="detail-hero" data-emoji="🏖️">
       <div class="trip-hero-name" id="detail-name"></div>
       <div class="trip-hero-dates" id="detail-dates"></div>
-      <div class="budget-bar-label"><span>Budget consommé</span><span id="detail-pct">0%</span></div>
-      <div class="budget-bar-track"><div class="budget-bar-fill" id="detail-bar" style="width:0%"></div></div>
+      <div class="budget-quick-row">
+        <div>
+          <div class="budget-quick-label">💰 Budget total (€)</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <input class="budget-inline-input" type="number" id="hero-budget-input" placeholder="0" min="0">
+            <button class="budget-save-btn" onclick="saveBudgetInline()">✓ Valider</button>
+          </div>
+          <div class="budget-hint">Modifiez et validez pour sauvegarder</div>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="budget-bar-label"><span>Budget consommé</span><span id="detail-pct">0%</span></div>
+        <div class="budget-bar-track"><div class="budget-bar-fill" id="detail-bar" style="width:0%"></div></div>
+      </div>
     </div>
     <div class="budget-cards">
       <div class="budget-card"><div class="budget-card-label">Budget</div><div class="budget-card-value total" id="bc-budget">0 €</div></div>
@@ -420,6 +443,7 @@ window.openTrip = function(id) {
   hero.style.background = 'linear-gradient(135deg,'+darken(trip.color||'#1a6b8a')+',+'+(trip.color||'#1a6b8a')+')';
   document.getElementById('detail-name').textContent = trip.name;
   document.getElementById('detail-dates').textContent = '📅 '+fmtDate(trip.start)+' → '+fmtDate(trip.end);
+  document.getElementById('hero-budget-input').value = trip.budget || 0;
   updateBudget(trip);
   switchTab('programme');
   showView('detail');
@@ -613,6 +637,20 @@ function renderTips() {
     + '</div>';
 }
 
+// ── BUDGET INLINE (hero) ──
+window.saveBudgetInline = async function() {
+  const val = parseFloat(document.getElementById('hero-budget-input').value);
+  if (isNaN(val) || val < 0) { toast('❌ Montant invalide'); return; }
+  const trip = getTrip(currentTripId);
+  trip.budget = val;
+  await fbSet('trips/'+currentTripId+'/budget', val);
+  updateBudget(trip);
+  // sync also the edit form if open
+  const editInput = document.getElementById('edit-trip-budget');
+  if (editInput) editInput.value = val;
+  toast('💰 Budget mis à jour : '+val+' €');
+};
+
 // ── EDIT TRIP ──
 function loadEditForm() {
   const trip = getTrip(currentTripId); if (!trip) return;
@@ -620,6 +658,8 @@ function loadEditForm() {
   document.getElementById('edit-trip-start').value = trip.start || '';
   document.getElementById('edit-trip-end').value = trip.end || '';
   document.getElementById('edit-trip-budget').value = trip.budget || '';
+  const heroInput = document.getElementById('hero-budget-input');
+  if (heroInput) heroInput.value = trip.budget || 0;
   document.getElementById('edit-trip-tips').value = (trip.tips||[]).join(', ');
 }
 
@@ -634,6 +674,8 @@ window.saveEditTrip = async function() {
   document.getElementById('detail-name').textContent = name;
   document.getElementById('detail-dates').textContent = '📅 '+fmtDate(start)+' → '+fmtDate(end);
   document.getElementById('bc-budget').textContent = budget.toFixed(0)+' €';
+  const heroInp = document.getElementById('hero-budget-input');
+  if (heroInp) heroInp.value = budget;
   toast('✅ Voyage mis à jour !');
 };
 
@@ -688,7 +730,7 @@ document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('cli
 // ════════════════════════════════
 const DEFAULT = {
   id:'charente-2026', name:'Charente Maritime', start:'2026-05-23', end:'2026-05-30',
-  budget:2500, emoji:'⛵', color:'#1a6b8a',
+  budget:500, emoji:'⛵', color:'#1a6b8a',
   tips:['prévoir vélos','crème solaire','maillots de bain','pique-niques','appareil photo 📸'],
   expenses:{},
   categories:{
