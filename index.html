@@ -47,6 +47,7 @@
   .stat-pill{background:var(--sky);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:500;color:var(--ocean);}
   .stat-pill.ok{background:#e8f5e9;color:#2e7d32;}
   .stat-pill.over{background:#fde8e8;color:#c0392b;}
+  .stat-pill.spent-pill{background:#fff3e0;color:#e07800;}
 
   .btn-add-trip{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--coral),var(--coral-light));color:white;border:none;border-radius:16px;padding:14px 22px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(232,107,74,.35);margin:8px 0 24px;}
   .btn-add-trip:hover{transform:translateY(-2px);}
@@ -114,6 +115,8 @@
   .expense-amount{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--coral);}
   .btn-del-exp{background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);padding:4px;border-radius:6px;}
   .btn-del-exp:hover{color:var(--coral);}
+  .btn-edit-exp{background:var(--sky);border:none;cursor:pointer;font-size:14px;color:var(--ocean);padding:5px 8px;border-radius:6px;transition:background .15s;}
+  .btn-edit-exp:hover{background:var(--sand);}
   .add-expense-btn{display:flex;align-items:center;gap:8px;background:white;border:2px dashed var(--ocean-light);border-radius:14px;padding:14px 18px;color:var(--ocean);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:background .15s;}
   .add-expense-btn:hover{background:var(--sky);}
 
@@ -163,6 +166,23 @@
   .budget-save-btn{background:var(--sun);color:var(--deep);border:none;border-radius:8px;padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:transform .1s,box-shadow .1s;white-space:nowrap;}
   .budget-save-btn:hover{transform:scale(1.04);box-shadow:0 3px 10px rgba(0,0,0,.2);}
   .budget-hint{font-size:11px;opacity:.55;margin-top:3px;}
+
+  /* ── STATS ── */
+  .stats-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px;}
+  .stats-summary-card{background:white;border-radius:14px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.07);text-align:center;}
+  .stats-summary-card .lbl{font-size:11px;color:var(--text-light);font-weight:500;margin-bottom:4px;}
+  .stats-summary-card .val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;}
+  .stats-cat-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--deep);margin:20px 0 12px;}
+  .stats-cat-card{background:white;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .stats-cat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .stats-cat-name{font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;}
+  .stats-cat-amount{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--coral);}
+  .stats-bar-track{background:var(--sky);border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px;}
+  .stats-bar-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+  .stats-cat-count{font-size:11px;color:var(--text-light);}
+  .stats-empty{text-align:center;padding:40px 20px;color:var(--text-light);}
+  .stats-top-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--sky);font-size:13px;}
+  .stats-top-item:last-child{border-bottom:none;}
 
   /* ── FOOTER ── */
   .app-footer{text-align:center;padding:32px 20px 40px;border-top:1px solid rgba(26,107,138,.1);margin-top:40px;}
@@ -239,6 +259,7 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab('programme')">Programme</button>
       <button class="tab" onclick="switchTab('depenses')">Dépenses</button>
+      <button class="tab" onclick="switchTab('stats')">📊 Stats</button>
       <button class="tab" onclick="switchTab('conseils')">Conseils</button>
       <button class="tab" onclick="switchTab('parametres')">⚙️ Paramètres</button>
     </div>
@@ -259,6 +280,9 @@
     <div id="tab-depenses" style="display:none">
       <div class="expense-list" id="expense-list"></div>
       <button class="add-expense-btn" onclick="openAddExpenseModal()">+ Enregistrer une dépense</button>
+    </div>
+    <div id="tab-stats" style="display:none">
+      <div id="stats-container"></div>
     </div>
     <div id="tab-conseils" style="display:none">
       <div class="tips-box" id="tips-box"></div>
@@ -322,7 +346,8 @@
 
 <div class="modal-overlay" id="modal-expense">
   <div class="modal">
-    <div class="modal-title">💸 Enregistrer une dépense</div>
+    <div class="modal-title" id="modal-expense-title">💸 Enregistrer une dépense</div>
+    <input type="hidden" id="exp-editing-id">
     <div class="form-group" style="margin-bottom:12px"><label>Description</label><input type="text" id="exp-desc" placeholder="Ex: Restaurant Le Port"></div>
     <div class="form-row">
       <div class="form-group"><label>Montant (€)</label><input type="number" id="exp-amount" placeholder="0.00"></div>
@@ -439,6 +464,7 @@ function renderTrips() {
       + '<div class="trip-card-dates">📅 '+fmtDate(trip.start)+' – '+fmtDate(trip.end)+'</div>'
       + '<div class="trip-card-stats">'
       + '<span class="stat-pill">💰 '+(trip.budget||0)+' €</span>'
+      + '<span class="stat-pill spent-pill">💸 '+spent.toFixed(0)+' € dépensés</span>'
       + '<span class="stat-pill '+(rem>=0?'ok':'over')+'">'+(rem>=0?'✅':'⚠️')+' '+rem.toFixed(0)+' € restants</span>'
       + '</div></div></div>';
   }).join('');
@@ -472,13 +498,14 @@ function updateBudget(trip) {
 // ── TABS ──
 window.switchTab = function(tab) {
   currentTab = tab;
-  ['programme','depenses','conseils','parametres'].forEach((n,i) => {
+  ['programme','depenses','stats','conseils','parametres'].forEach((n,i) => {
     document.querySelectorAll('.tab')[i].classList.toggle('active', n===tab);
     document.getElementById('tab-'+n).style.display = n===tab ? '' : 'none';
   });
   document.getElementById('fab-add-activity').classList.toggle('hidden', tab !== 'programme');
   if (tab==='programme') renderCategories();
   if (tab==='depenses') renderExpenses();
+  if (tab==='stats') renderStats();
   if (tab==='conseils') renderTips();
   if (tab==='parametres') loadEditForm();
 };
@@ -601,15 +628,32 @@ function renderExpenses() {
     + '<div class="expense-cat-badge">'+(exp.cat||'📦')+'</div>'
     + '<div class="expense-info"><div class="expense-name">'+exp.desc+'</div><div class="expense-meta">'+(exp.date?fmtDate(exp.date):'')+'</div></div>'
     + '<div class="expense-amount">'+parseFloat(exp.amount).toFixed(2)+' €</div>'
+    + '<button class="btn-edit-exp" onclick="openEditExpense(\''+exp.id+'\')">✏️</button>'
     + '<button class="btn-del-exp" onclick="delExp(\''+exp.id+'\')">✕</button>'
     + '</div>'
   ).join('');
 }
 
 window.openAddExpenseModal = function() {
+  document.getElementById('modal-expense-title').textContent = '💸 Enregistrer une dépense';
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-amount').value = '';
   document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('exp-cat').value = '🍽️';
+  document.getElementById('exp-editing-id').value = '';
+  openModal('modal-expense');
+};
+
+window.openEditExpense = function(id) {
+  const trip = getTrip(currentTripId);
+  const exp = trip.expenses[id];
+  if (!exp) return;
+  document.getElementById('modal-expense-title').textContent = '✏️ Modifier la dépense';
+  document.getElementById('exp-desc').value = exp.desc || '';
+  document.getElementById('exp-amount').value = exp.amount || '';
+  document.getElementById('exp-date').value = exp.date || '';
+  document.getElementById('exp-cat').value = exp.cat || '📦';
+  document.getElementById('exp-editing-id').value = id;
   openModal('modal-expense');
 };
 
@@ -618,12 +662,22 @@ window.saveExpense = async function() {
   const amount = parseFloat(document.getElementById('exp-amount').value);
   const date = document.getElementById('exp-date').value;
   const cat = document.getElementById('exp-cat').value;
+  const editingId = document.getElementById('exp-editing-id').value;
   if (!desc || isNaN(amount)) return;
-  const id = uid();
-  await fbSet('trips/'+currentTripId+'/expenses/'+id, { id, desc, amount, date, cat });
-  closeModal('modal-expense');
-  updateBudget(getTrip(currentTripId));
-  toast('💸 Dépense enregistrée !');
+  if (editingId) {
+    // Mise à jour
+    await fbSet('trips/'+currentTripId+'/expenses/'+editingId, { id:editingId, desc, amount, date, cat });
+    closeModal('modal-expense');
+    updateBudget(getTrip(currentTripId));
+    toast('✅ Dépense modifiée !');
+  } else {
+    // Création
+    const id = uid();
+    await fbSet('trips/'+currentTripId+'/expenses/'+id, { id, desc, amount, date, cat });
+    closeModal('modal-expense');
+    updateBudget(getTrip(currentTripId));
+    toast('💸 Dépense enregistrée !');
+  }
 };
 
 window.delExp = async function(id) {
@@ -631,7 +685,78 @@ window.delExp = async function(id) {
   await fbDel('trips/'+currentTripId+'/expenses/'+id);
   updateBudget(getTrip(currentTripId));
   toast('🗑 Dépense supprimée');
+  renderExpenses();
 };
+
+// ── STATS ──
+function renderStats() {
+  const trip = getTrip(currentTripId);
+  const container = document.getElementById('stats-container');
+  const exps = Object.values(trip.expenses || {});
+  if (!exps.length) {
+    container.innerHTML = '<div class="stats-empty"><div style="font-size:48px">📊</div><div style="font-family:Playfair Display,serif;font-size:18px;color:var(--deep);margin-top:12px">Aucune dépense à analyser</div><p style="font-size:13px;margin-top:6px">Commencez à saisir des dépenses !</p></div>';
+    return;
+  }
+  const total = exps.reduce((s,e) => s + parseFloat(e.amount||0), 0);
+  const budget = parseFloat(trip.budget||0);
+  const nbExp = exps.length;
+  const maxExp = Math.max(...exps.map(e => parseFloat(e.amount||0)));
+  const avgExp = total / nbExp;
+  // Grouper par catégorie emoji
+  const byCat = {};
+  exps.forEach(e => {
+    const k = e.cat || '📦';
+    if (!byCat[k]) byCat[k] = { cat:k, total:0, count:0, items:[] };
+    byCat[k].total += parseFloat(e.amount||0);
+    byCat[k].count++;
+    byCat[k].items.push(e);
+  });
+  const cats = Object.values(byCat).sort((a,b) => b.total - a.total);
+  const CAT_LABELS = {'🍽️':'Restauration','🎡':'Activité / Visite','🏨':'Hébergement','⛽':'Transport','🛒':'Courses','🍦':'Loisirs','💊':'Santé','🎁':'Souvenirs','📦':'Autre'};
+  const COLORS = ['#1a6b8a','#e86b4a','#4a9b6f','#7b5ea7','#e07800','#f5c842','#2980b9','#16a085','#c0392b'];
+  const pct = budget ? Math.min(100, Math.round(total/budget*100)) : 0;
+  // Top dépense
+  const topExp = exps.reduce((a,b) => parseFloat(a.amount||0) > parseFloat(b.amount||0) ? a : b);
+  let html = '<div class="stats-summary">';
+  html += '<div class="stats-summary-card"><div class="lbl">💸 Total dépensé</div><div class="val" style="color:var(--coral)">'+total.toFixed(2)+' €</div></div>';
+  html += '<div class="stats-summary-card"><div class="lbl">🧾 Nb de dépenses</div><div class="val" style="color:var(--ocean)">'+nbExp+'</div></div>';
+  html += '<div class="stats-summary-card"><div class="lbl">📈 Moyenne / dépense</div><div class="val" style="color:var(--green)">'+avgExp.toFixed(2)+' €</div></div>';
+  html += '<div class="stats-summary-card"><div class="lbl">🏆 Plus grosse dépense</div><div class="val" style="color:var(--purple)">'+maxExp.toFixed(2)+' €</div></div>';
+  html += '</div>';
+  // Budget gauge
+  if (budget > 0) {
+    html += '<div style="background:white;border-radius:14px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:20px">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:8px"><span>🎯 Consommation budget</span><span style="color:'+(pct>=100?'var(--coral)':'var(--ocean)')+'">'+pct+' %</span></div>';
+    html += '<div class="stats-bar-track"><div class="stats-bar-fill" style="width:'+pct+'%;background:linear-gradient(90deg,var(--ocean),var(--coral-light))"></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-light);margin-top:4px"><span>0 €</span><span>'+budget+' €</span></div>';
+    html += '</div>';
+  }
+  // Par catégorie
+  html += '<div class="stats-cat-title">📂 Répartition par catégorie</div>';
+  cats.forEach((cat, i) => {
+    const pctCat = total > 0 ? Math.round(cat.total/total*100) : 0;
+    const color = COLORS[i % COLORS.length];
+    const label = CAT_LABELS[cat.cat] || cat.cat;
+    // Top 3 items de la catégorie
+    const top3 = cat.items.sort((a,b) => parseFloat(b.amount||0)-parseFloat(a.amount||0)).slice(0,3);
+    html += '<div class="stats-cat-card">';
+    html += '<div class="stats-cat-header">';
+    html += '<div class="stats-cat-name"><span>'+cat.cat+'</span><span>'+label+'</span></div>';
+    html += '<div class="stats-cat-amount">'+cat.total.toFixed(2)+' €</div>';
+    html += '</div>';
+    html += '<div class="stats-bar-track"><div class="stats-bar-fill" style="width:'+pctCat+'%;background:'+color+'"></div></div>';
+    html += '<div class="stats-cat-count">'+pctCat+'% du total · '+cat.count+' dépense'+(cat.count>1?'s':'')+'</div>';
+    if (top3.length) {
+      html += '<div style="margin-top:10px">';
+      top3.forEach(item => {
+        html += '<div class="stats-top-item"><span>'+item.desc+'</span><span style="font-weight:700;color:'+color+'">'+parseFloat(item.amount).toFixed(2)+' €</span></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
 
 // ── TIPS ──
 function renderTips() {
